@@ -1,0 +1,35 @@
+{
+  "name": "spank-prediction",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tap-to-trade Polymarket prediction cards for Apple Silicon Macs.",
+  "main": "out/main/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "dev:renderer": "vite src/renderer --host 127.0.0.1",
+    "build:tapd": "cd tapd && go test ./... && go build -o tapd ./cmd/tapd",
+    "check:tapd": "node scripts/check-tapd.mjs",
+    "repair:electron": "node scripts/repair-electron.mjs",
+    "build": "tsc --noEmit && electron-vite build",
+    "preview": "electron-vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "lucide-react": "^1.9.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.2.0",
+    "electron": "^41.3.0",
+    "electron-vite": "^5.0.0",
+    "typescript": "^6.0.3",
+    "vite": "^7.3.2",
+    "vitest": "^4.1.5"
+  }
+}

@@ -1,0 +1,561 @@
+:root {
+  color: #241b14;
+  background: #f5eddf;
+  font-family:
+    ui-rounded,
+    "Avenir Next",
+    "Nunito Sans",
+    system-ui,
+    sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 100vw;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+button {
+  border: 0;
+  font: inherit;
+}
+
+.shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background:
+    linear-gradient(135deg, rgba(246, 101, 78, 0.16), transparent 35%),
+    linear-gradient(315deg, rgba(56, 151, 128, 0.16), transparent 42%),
+    #f5eddf;
+  padding: 18px;
+}
+
+.phone {
+  position: relative;
+  width: min(100%, 390px);
+  height: min(100vh - 36px, 780px);
+  min-height: 700px;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto auto minmax(350px, 1fr) minmax(132px, 190px);
+  gap: 10px;
+  border: 2px solid rgba(36, 27, 20, 0.16);
+  border-radius: 46px;
+  background:
+    radial-gradient(circle at 22% 14%, rgba(246, 197, 77, 0.36), transparent 32%),
+    linear-gradient(180deg, #fff8ed 0%, #f7ead8 58%, #efe2d8 100%);
+  box-shadow:
+    0 28px 70px rgba(50, 39, 25, 0.26),
+    inset 0 0 0 9px rgba(255, 255, 255, 0.58);
+  padding: 18px;
+}
+
+.preloadError {
+  width: min(100%, 390px);
+  display: grid;
+  gap: 10px;
+  padding: 22px;
+  border: 2px solid rgba(36, 27, 20, 0.16);
+  border-radius: 24px;
+  background: #fffaf2;
+  box-shadow: 0 18px 40px rgba(50, 39, 25, 0.18);
+}
+
+.preloadError strong {
+  color: #b84030;
+  font-size: 20px;
+  font-weight: 950;
+}
+
+.preloadError span {
+  color: rgba(36, 27, 20, 0.7);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.topBar {
+  height: 42px;
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 10px;
+  align-items: center;
+  -webkit-app-region: drag;
+}
+
+.brandMark,
+.balancePill {
+  -webkit-app-region: no-drag;
+}
+
+.brandMark {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 20px;
+  color: #fff8ed;
+  background: #ea5d46;
+  box-shadow: 0 8px 0 #b84030;
+}
+
+.balancePill {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 126px;
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(36, 27, 20, 0.12);
+  border-radius: 20px;
+  color: #254337;
+  background: #dff4cd;
+  box-shadow: 0 7px 0 rgba(112, 160, 70, 0.45);
+  font-weight: 850;
+  justify-content: center;
+}
+
+.toastStack {
+  position: absolute;
+  z-index: 12;
+  top: 70px;
+  right: 16px;
+  width: min(300px, calc(100% - 32px));
+  height: 126px;
+  pointer-events: none;
+}
+
+.gooeyToast {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100%;
+  min-height: 58px;
+  opacity: 1;
+  transform-origin: top right;
+  transition:
+    transform 420ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 260ms ease;
+  animation: toastIn 480ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.gooeyToast.hidden {
+  opacity: 0;
+}
+
+.gooeyToastBlob {
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(36, 27, 20, 0.1);
+  border-radius: 23px 23px 23px 12px;
+  background: #fffaf2;
+  box-shadow:
+    0 18px 34px rgba(58, 43, 29, 0.18),
+    inset 0 -8px 18px rgba(36, 27, 20, 0.05);
+}
+
+.gooeyToastBlob::before {
+  content: "";
+  position: absolute;
+  right: 18px;
+  bottom: -8px;
+  width: 34px;
+  height: 22px;
+  border-radius: 999px;
+  background: inherit;
+  filter: blur(0.2px);
+}
+
+.gooeyToastContent {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 8px;
+  align-items: center;
+  min-height: 58px;
+  padding: 10px 12px 11px;
+}
+
+.gooeyToastIcon {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(36, 27, 20, 0.08);
+}
+
+.gooeyToast strong,
+.gooeyToast small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gooeyToast strong {
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.gooeyToast small {
+  margin-top: 3px;
+  color: rgba(36, 27, 20, 0.62);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.gooeyToast.success strong,
+.gooeyToast.success .gooeyToastIcon {
+  color: #2e7a49;
+}
+
+.gooeyToast.error strong,
+.gooeyToast.error .gooeyToastIcon {
+  color: #b84030;
+}
+
+.gooeyToast.info strong,
+.gooeyToast.info .gooeyToastIcon {
+  color: #1e5949;
+}
+
+.sensorLine {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 2px;
+  color: rgba(36, 27, 20, 0.7);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.sensorBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 9px;
+  border-radius: 16px;
+  color: #241b14;
+}
+
+.sensorBadge.ready {
+  background: #9fe3c3;
+}
+
+.sensorBadge.fallback {
+  background: #ffd47d;
+}
+
+.stage {
+  position: relative;
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  perspective: 950px;
+  padding-bottom: 8px;
+}
+
+.stage.tapBurst::after {
+  content: "";
+  position: absolute;
+  width: 230px;
+  height: 230px;
+  border-radius: 999px;
+  border: 2px solid rgba(234, 93, 70, 0.35);
+  animation: burst 520ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.marketCard,
+.emptyCard {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 8px auto minmax(92px, 1fr) auto auto;
+  gap: 14px;
+  padding: 18px;
+  border: 2px solid rgba(36, 27, 20, 0.14);
+  border-radius: 30px;
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.22)),
+    #fff3db;
+  box-shadow:
+    0 10px 0 rgba(36, 27, 20, 0.07),
+    0 18px 30px rgba(64, 47, 29, 0.13);
+  touch-action: none;
+  transition:
+    transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 180ms ease;
+}
+
+.timerRail {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(36, 27, 20, 0.1);
+}
+
+.timerRail span {
+  display: block;
+  height: 100%;
+  width: 100%;
+  border-radius: inherit;
+  transform-origin: left center;
+  background: linear-gradient(90deg, #ea5d46, #f6c54d, #48b87d);
+  animation: shrink 8s linear forwards;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 0;
+}
+
+.marketLogo {
+  width: 58px;
+  height: 58px;
+  border-radius: 19px;
+  object-fit: cover;
+  border: 2px solid rgba(36, 27, 20, 0.1);
+  background: #fffaf2;
+}
+
+.fallbackLogo {
+  display: grid;
+  place-items: center;
+  color: #fffaf2;
+  background: #389780;
+  font-size: 27px;
+  font-weight: 950;
+}
+
+.eyebrow {
+  margin: 0 0 5px;
+  color: #b84030;
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.marketMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  color: rgba(36, 27, 20, 0.62);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.marketCard h1 {
+  min-height: 0;
+  margin: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  color: #241b14;
+  font-size: 27px;
+  line-height: 1.04;
+  letter-spacing: 0;
+}
+
+.priceRow {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  margin-bottom: 0;
+}
+
+.priceLabel {
+  display: block;
+  margin-bottom: 2px;
+  color: rgba(36, 27, 20, 0.56);
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.priceRow strong {
+  color: #1e5949;
+  font-size: 56px;
+  line-height: 0.9;
+  letter-spacing: 0;
+}
+
+.heat {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 17px;
+  color: #8b3329;
+  background: #ffcfb8;
+  font-weight: 900;
+}
+
+.buyButton {
+  width: 100%;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 24px;
+  color: #fffaf2;
+  background: #ea5d46;
+  box-shadow: 0 9px 0 #b84030;
+  font-size: 18px;
+  font-weight: 950;
+  cursor: pointer;
+  transition:
+    transform 160ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.buyButton:active {
+  transform: translateY(5px);
+  box-shadow: 0 4px 0 #b84030;
+}
+
+.buyButton:disabled {
+  cursor: wait;
+  filter: saturate(0.8);
+}
+
+.emptyCard {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  color: rgba(36, 27, 20, 0.66);
+  font-weight: 900;
+}
+
+.activity {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  min-height: 0;
+  margin-top: 0;
+  overflow-y: auto;
+  padding: 0 2px 4px 0;
+  scrollbar-width: none;
+}
+
+.activity::-webkit-scrollbar {
+  display: none;
+}
+
+.quietState,
+.orderLine {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 18px;
+  background: rgba(36, 27, 20, 0.08);
+}
+
+.quietState {
+  color: rgba(36, 27, 20, 0.62);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.orderLine {
+  justify-content: space-between;
+}
+
+.orderLine div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.orderLine strong {
+  color: #2e7a49;
+  font-size: 11px;
+  letter-spacing: 0;
+}
+
+.orderLine.rejected strong {
+  color: #b84030;
+}
+
+.orderLine span {
+  overflow: hidden;
+  max-width: 206px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.orderLine p {
+  margin: 0;
+  max-width: 108px;
+  overflow: hidden;
+  color: rgba(36, 27, 20, 0.58);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes shrink {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes burst {
+  from {
+    transform: scale(0.55);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1.7);
+    opacity: 0;
+  }
+}
+
+@keyframes toastIn {
+  from {
+    transform: translateY(-16px) scale(0.98);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}
