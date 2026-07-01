@@ -8,7 +8,8 @@ import type {
   SensorStatus,
   SettlementNotice,
   TapBuyRequest,
-  TapEvent
+  TapEvent,
+  WalletSnapshot
 } from "@shared/types";
 
 type Unsubscribe = () => void;
@@ -57,6 +58,13 @@ const api = {
     list: (): Promise<SettlementNotice[]> => ipcRenderer.invoke("settlements:list"),
     subscribe: (callback: (notice: SettlementNotice) => void): Unsubscribe =>
       subscribe("settlements:subscribe", callback)
+  },
+  wallet: {
+    connect: (): Promise<void> => ipcRenderer.invoke("wallet:connect"),
+    disconnect: (): Promise<void> => ipcRenderer.invoke("wallet:disconnect"),
+    snapshot: (): Promise<WalletSnapshot> => ipcRenderer.invoke("wallet:snapshot"),
+    onStatus: (callback: (status: Record<string, unknown>) => void): Unsubscribe =>
+      subscribe("wallet:status", callback)
   }
 };
 

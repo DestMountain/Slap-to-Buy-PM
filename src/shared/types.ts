@@ -1,6 +1,16 @@
-export type TradingMode = "paper";
+export type TradingMode = "paper" | "clob";
 
 export type SensorSource = "imu" | "keyboard";
+
+export type WalletStatus = "disconnected" | "connecting" | "connected" | "error";
+
+export interface WalletSnapshot {
+  status: WalletStatus;
+  address: string | null;
+  network: string;
+  usdcBalance: number;
+  polygonBalance: number;
+}
 
 export type SensorStatusCode =
   | "starting"
@@ -68,10 +78,27 @@ export interface OrderReceipt {
   reason?: string;
 }
 
+export interface OrderReceipt {
+  id: string;
+  status: OrderStatus;
+  mode: TradingMode;
+  title: string;
+  marketId: string;
+  yesTokenId: string;
+  price: number;
+  usdAmount: number;
+  shares: number;
+  createdAt: number;
+  source: SensorSource;
+  reason?: string;
+  clobOrderId?: string;
+}
+
 export interface BalanceSnapshot {
   mode: TradingMode;
   availableUsd: number;
   paperUsd: number;
+  clobUsdc?: number;
   reason?: string;
 }
 

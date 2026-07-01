@@ -5,6 +5,7 @@ import { MarketService } from "@main/markets";
 import { SensorService } from "@main/sensor";
 import { JsonStore } from "@main/store";
 import { TradingService } from "@main/trading";
+import { WalletService } from "@main/wallet";
 import type { TapBuyRequest } from "@shared/types";
 
 let mainWindow: BrowserWindow | null = null;
@@ -56,12 +57,18 @@ function createWindow(): BrowserWindow {
 app.whenReady().then(async () => {
   const store = new JsonStore(join(app.getPath("userData"), "state.json"));
   const markets = new MarketService(config);
-  const trading = new TradingService(config, store, markets);
+  const wallet = new WalletService(config);
+  const trading = new TradingService(config, store, markets, wallet);
   const sensor = new SensorService(config);
 
+  // Auto-connect wallet if private key is configured
+  if (config.privateKey) {
+    wallet.connect().catch(() => {});
+  }
+
   mainWindow = createWindow();
-  registerIpc({ markets, trading, sensor });
-  wireEvents({ markets, trading, sensor });
+  registerIpc({ markets, trading, sensor, wallet });
+  wireEvents({ markets, trading, sensor, wallet });
 
   sensor.start();
 
@@ -73,25 +80,22 @@ app.whenReady().then(async () => {
 });
 
 app.on("window-all-closed", () => {
-  if (marketTimer) {
-    clearInterval(marketTimer);
-  }
-
-  if (process.platform !== "darwin") {
-    app.quit();
-  }
+  if (marketTimer) clearInterval(marketTimer);
+  if (process.platform !== "darwin") app.quit();
 });
 
 function registerIpc(input: {
   markets: MarketService;
   trading: TradingService;
   sensor: SensorService;
+  wallet: WalletService;
 }): void {
-  const { markets, trading, sensor } = input;
+  const { markets, trading, sensor, wallet } = input;
 
   ipcMain.handle("app:snapshot", async () => ({
     balance: await trading.balance(),
-    sensor: sensor.status()
+    sensor: sensor.status(),
+    wallet: await wallet.snapshot()
   }));
 
   ipcMain.handle("markets:list", () => markets.listMarkets());
@@ -108,14 +112,20 @@ function registerIpc(input: {
   ipcMain.handle("positions:get", () => trading.positions());
   ipcMain.handle("settlements:list", () => trading.settlements());
   ipcMain.handle("sensor:status", () => sensor.status());
+
+  // Wallet IPC
+  ipcMain.handle("wallet:connect", () => wallet.connect());
+  ipcMain.handle("wallet:disconnect", () => wallet.disconnect());
+  ipcMain.handle("wallet:snapshot", () => wallet.snapshot());
 }
 
 function wireEvents(input: {
   markets: MarketService;
   trading: TradingService;
   sensor: SensorService;
+  wallet: WalletService;
 }): void {
-  const { markets, trading, sensor } = input;
+  const { markets, trading, sensor, wallet } = input;
 
   sensor.on("status", (status) => {
     mainWindow?.webContents.send("sensor:status", status);
@@ -140,6 +150,25 @@ function wireEvents(input: {
     });
   });
 
+  // Forward wallet events to renderer
+  wallet.on("connected", (address) => {
+    mainWindow?.webContents.send("wallet:status", { status: "connected", address });
+    void trading.balance().then((balance) => {
+      mainWindow?.webContents.send("balance:update", balance);
+    });
+  });
+
+  wallet.on("disconnected", () => {
+    mainWindow?.webContents.send("wallet:status", { status: "disconnected", address: null });
+    void trading.balance().then((balance) => {
+      mainWindow?.webContents.send("balance:update", balance);
+    });
+  });
+
+  wallet.on("error", (msg) => {
+    mainWindow?.webContents.send("wallet:status", { status: "error", address: null, error: msg });
+  });
+
   marketTimer = setInterval(() => {
     void markets.listMarkets().then((cards) => {
       mainWindow?.webContents.send("markets:update", cards);
@@ -149,18 +178,15 @@ function wireEvents(input: {
 
 async function placeImuBuy(markets: MarketService, trading: TradingService): Promise<void> {
   let marketId = currentMarketId;
-
   if (!marketId) {
     const [firstMarket] = await markets.listMarkets();
     marketId = firstMarket?.id ?? null;
     currentMarketId = marketId;
   }
-
   if (!marketId) {
     console.info("[orders] skipped imu buy: no current market");
     return;
   }
-
   const order = await trading.tapBuyYes({ marketId, source: "imu" });
   console.info(`[orders] imu ${order.status} ${order.title} amount=${order.usdAmount}`);
   await publishOrderUpdate(trading, order, "imu-direct");
@@ -181,10 +207,7 @@ async function publishOrderUpdate(
 
 function sendToRenderer(channel: string, payload: unknown): boolean {
   const webContents = mainWindow?.webContents;
-  if (!webContents || webContents.isDestroyed()) {
-    return false;
-  }
-
+  if (!webContents || webContents.isDestroyed()) return false;
   webContents.send(channel, payload);
   return true;
 }

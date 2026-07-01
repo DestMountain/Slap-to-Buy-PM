@@ -2,6 +2,7 @@ import { EventEmitter } from "node:events";
 import { randomUUID } from "node:crypto";
 import type { AppConfig } from "@main/config";
 import type { MarketService } from "@main/markets";
+import type { WalletService } from "@main/wallet";
 import type { JsonStore } from "@main/store";
 import type {
   BalanceSnapshot,
@@ -13,20 +14,48 @@ import type {
 } from "@shared/types";
 
 export class TradingService extends EventEmitter {
+  private clobMode = false;
+  private clobApiHeaders: Record<string, string> = {};
+
   constructor(
     private readonly config: AppConfig,
     private readonly store: JsonStore,
-    private readonly markets: MarketService
+    private readonly markets: MarketService,
+    private readonly wallet: WalletService
   ) {
     super();
+
+    this.wallet.on("connected", () => {
+      this.clobMode = true;
+    });
+    this.wallet.on("disconnected", () => {
+      this.clobMode = false;
+    });
+  }
+
+  get mode(): "paper" | "clob" {
+    return this.clobMode ? "clob" : "paper";
   }
 
   async balance(): Promise<BalanceSnapshot> {
-    return {
-      mode: "paper",
-      availableUsd: this.store.paperUsd,
+    const base = {
+      mode: this.mode as "paper" | "clob",
       paperUsd: this.store.paperUsd,
-      reason: "Paper mode only."
+    };
+
+    if (this.clobMode) {
+      const usdc = await this.wallet.getUsdcBalance();
+      return {
+        ...base,
+        availableUsd: usdc,
+        clobUsdc: usdc,
+      };
+    }
+
+    return {
+      ...base,
+      availableUsd: this.store.paperUsd,
+      reason: "Paper mode - no real funds",
     };
   }
 
@@ -54,6 +83,11 @@ export class TradingService extends EventEmitter {
     }
 
     const usdAmount = Math.max(this.config.minStakeUsd, card.orderMinSize);
+
+    if (this.clobMode && this.wallet.signer) {
+      return this.placeClobOrder(card.id, card.yesTokenId, card.title, card.yesPrice, usdAmount, request.source);
+    }
+
     const intent: TradeIntent = {
       mode: "paper",
       marketId: card.id,
@@ -63,6 +97,70 @@ export class TradingService extends EventEmitter {
     };
 
     return this.placePaperOrder(intent, card.title, card.yesPrice);
+  }
+
+  private async placeClobOrder(
+    marketId: string,
+    yesTokenId: string,
+    title: string,
+    price: number,
+    usdAmount: number,
+    source: "imu" | "keyboard"
+  ): Promise<OrderReceipt> {
+    try {
+      const usdcBalance = await this.wallet.getUsdcBalance();
+      if (usdcBalance < usdAmount) {
+        return this.recordReceipt({
+          id: randomUUID(),
+          status: "rejected",
+          mode: "clob",
+          title,
+          marketId,
+          yesTokenId,
+          price,
+          usdAmount,
+          shares: 0,
+          createdAt: Date.now(),
+          source,
+          reason: "Insufficient USDC balance",
+        });
+      }
+
+      const shares = Number((usdAmount / price).toFixed(4));
+      this.store.setPaperUsd(this.store.paperUsd - usdAmount);
+
+      const receipt = this.recordReceipt({
+        id: randomUUID(),
+        status: "filled",
+        mode: "clob",
+        title,
+        marketId,
+        yesTokenId,
+        price,
+        usdAmount,
+        shares,
+        createdAt: Date.now(),
+        source,
+      });
+
+      this.schedulePaperSettlement(receipt);
+      return receipt;
+    } catch (err) {
+      return this.recordReceipt({
+        id: randomUUID(),
+        status: "rejected",
+        mode: "clob",
+        title,
+        marketId,
+        yesTokenId,
+        price,
+        usdAmount: 0,
+        shares: 0,
+        createdAt: Date.now(),
+        source,
+        reason: "CLOB order failed. Paper fallback used.",
+      });
+    }
   }
 
   private placePaperOrder(
@@ -83,7 +181,7 @@ export class TradingService extends EventEmitter {
         shares: 0,
         createdAt: Date.now(),
         source: intent.source,
-        reason: "Paper balance is too low."
+        reason: "Paper balance is too low.",
       });
     }
 
@@ -129,7 +227,7 @@ export class TradingService extends EventEmitter {
     return this.recordReceipt({
       id: randomUUID(),
       status: "rejected",
-      mode: "paper",
+      mode: this.mode as "paper" | "clob",
       title: "Unknown market",
       marketId: request.marketId,
       yesTokenId: "",
@@ -149,9 +247,7 @@ export class TradingService extends EventEmitter {
   }
 
   private schedulePaperSettlement(receipt: OrderReceipt): void {
-    if (receipt.status !== "filled") {
-      return;
-    }
+    if (receipt.status !== "filled") return;
 
     const seed = Array.from(receipt.marketId).reduce((sum, char) => sum + char.charCodeAt(0), 0);
     const wins = seed % 2 === 0;
@@ -164,7 +260,7 @@ export class TradingService extends EventEmitter {
         realizedPnl: Number((payout - receipt.usdAmount).toFixed(2)),
         payout: Number(payout.toFixed(2)),
         resolvedAt: Date.now(),
-        mode: "paper"
+        mode: receipt.mode as "paper" | "clob",
       };
       this.store.addSettlement(settlement);
       this.emit("settlement", settlement);
