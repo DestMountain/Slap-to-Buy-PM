@@ -5,19 +5,14 @@ import type { WalletSnapshot } from "@shared/types";
 
 const USDC_ABI = [
   "function balanceOf(address owner) view returns (uint256)",
-  "function approve(address spender, uint256 amount) returns (bool)",
-  "function allowance(address owner, address spender) view returns (uint256)",
-];
-
-const CTF_ABI = [
-  "function getProxyForMarket(address marketId) view returns (address)",
-  "function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes data)",
 ];
 
 export class WalletService extends EventEmitter {
   private wallet: Wallet | null = null;
   private provider: JsonRpcProvider;
   private _address: string | null = null;
+  private _usdcBalance = 0;
+  private _polyBalance = 0;
 
   constructor(private readonly config: AppConfig) {
     super();
@@ -41,11 +36,12 @@ export class WalletService extends EventEmitter {
       this.emit("error", "No private key configured");
       return;
     }
-
     try {
       this.wallet = new Wallet(this.config.privateKey, this.provider);
-      this._address = await this.wallet.getAddress();
+      this._address = this.wallet.address;
       this.emit("connected", this._address);
+      // Fetch balances in background - don't block UI
+      this.refreshBalances().catch(() => {});
     } catch (err) {
       this.wallet = null;
       this._address = null;
@@ -53,43 +49,44 @@ export class WalletService extends EventEmitter {
     }
   }
 
+  private async refreshBalances(): Promise<void> {
+    try {
+      this._usdcBalance = await this.getUsdcBalance();
+    } catch { /* background */ }
+    try {
+      this._polyBalance = await this.getPolygonBalance();
+    } catch { /* background */ }
+  }
+
   disconnect(): void {
     this.wallet = null;
     this._address = null;
+    this._usdcBalance = 0;
+    this._polyBalance = 0;
     this.emit("disconnected");
   }
 
   async snapshot(): Promise<WalletSnapshot> {
-    const usdc = await this.getUsdcBalance();
-    const polygon = await this.getPolygonBalance();
     return {
       status: this.wallet ? "connected" : "disconnected",
       address: this._address,
       network: "Polygon",
-      usdcBalance: usdc,
-      polygonBalance: polygon,
+      usdcBalance: this._usdcBalance,
+      polygonBalance: this._polyBalance,
     };
   }
 
-  async getUsdcBalance(): Promise<number> {
+  private async getUsdcBalance(): Promise<number> {
     if (!this.wallet || !this._address) return 0;
-    try {
-      const usdc = new Contract(this.config.usdcContract, USDC_ABI, this.provider);
-      const balance = await usdc.balanceOf(this._address);
-      return Number(formatUnits(balance, 6));
-    } catch {
-      return 0;
-    }
+    const usdc = new Contract(this.config.usdcContract, USDC_ABI, this.provider);
+    const balance = await usdc.balanceOf(this._address);
+    return Number(formatUnits(balance, 6));
   }
 
-  async getPolygonBalance(): Promise<number> {
+  private async getPolygonBalance(): Promise<number> {
     if (!this.wallet || !this._address) return 0;
-    try {
-      const balance = await this.provider.getBalance(this._address);
-      return Number(formatUnits(balance, 18));
-    } catch {
-      return 0;
-    }
+    const balance = await this.provider.getBalance(this._address);
+    return Number(formatUnits(balance, 18));
   }
 
   async approveUsdc(spender: string, amount: number): Promise<boolean> {

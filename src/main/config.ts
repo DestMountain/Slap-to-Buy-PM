@@ -2,6 +2,7 @@ export interface AppConfig {
   gammaHost: string;
   minStakeUsd: number;
   tapdPath: string | null;
+  imuDisabled: boolean;
 
   // CLOB
   clobApiHost: string;
@@ -40,6 +41,7 @@ export function loadConfig(): AppConfig {
     gammaHost: env("POLYMARKET_GAMMA_HOST") ?? "https://gamma-api.polymarket.com",
     minStakeUsd: envNumber("SPANK_MIN_STAKE_USD", 1),
     tapdPath: env("SPANK_TAPD_PATH"),
+    imuDisabled: env("NO_TAPD") === "1" || env("IMU_DISABLED") === "1" || env("IMU_DISABLED") === "true",
     clobApiHost: "https://clob.polymarket.com",
     clobWsHost: "wss://clob-polymarket.vercel.app/ws",
     polygonRpc: env("POLYGON_RPC") ?? "https://polygon-rpc.com",

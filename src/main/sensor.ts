@@ -25,6 +25,15 @@ export class SensorService extends EventEmitter {
   }
 
   start(): void {
+    // Allow disabling IMU via config
+    if (this.config.imuDisabled) {
+      this.useKeyboardFallback(
+        "unsupported",
+        "IMU disabled by config; using Space key fallback."
+      );
+      return;
+    }
+
     if (process.platform !== "darwin" || process.arch !== "arm64") {
       this.useKeyboardFallback(
         "unsupported",

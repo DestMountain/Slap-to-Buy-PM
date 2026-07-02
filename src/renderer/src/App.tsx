@@ -179,7 +179,7 @@ export default function App(): ReactElement {
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent): void {
-      if (event.code !== "Space" || !snapshot?.sensor.keyboardFallback) {
+      if (event.code !== "Space") {
         return;
       }
 
